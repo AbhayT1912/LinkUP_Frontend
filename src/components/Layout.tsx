@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { Menu } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { CreatePostModal } from "./CreatePostModal";
 import { CreateStoryModal } from "./CreateStoryModal";
 import { EditProfileModal } from "./EditProfileModal";
 import { NotificationDropdown } from "./NotificationDropdown";
+import { getMyProfile } from "../services/user.service";
 
 interface LayoutProps {
   children: (props: {
@@ -14,11 +16,26 @@ interface LayoutProps {
 }
 
 export function Layout({ children }: LayoutProps) {
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [createPostOpen, setCreatePostOpen] = useState(false);
   const [createStoryOpen, setCreateStoryOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [hideMobileHeader, setHideMobileHeader] = useState(false);
+
+  /* Load user profile */
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const res = await getMyProfile();
+        setCurrentUser(res.data.user);
+      } catch (err) {
+        console.error("Failed to load user profile", err);
+      }
+    };
+    loadProfile();
+  }, []);
 
   /* Hide mobile header on scroll down */
   useEffect(() => {
@@ -69,8 +86,22 @@ export function Layout({ children }: LayoutProps) {
       <Menu className="w-6 h-6 text-gray-700 dark:text-gray-300" />
     </button>
 
-    {/* Bell */}
-    <NotificationDropdown />
+    {/* Bell + Profile Icons */}
+    <div className="flex items-center gap-2">
+      <NotificationDropdown />
+      {currentUser && (
+        <button
+          onClick={() => navigate("/profile")}
+          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+        >
+          <img
+            src={currentUser.avatar || "https://via.placeholder.com/24"}
+            alt={currentUser.name}
+            className="w-6 h-6 rounded-full object-cover"
+          />
+        </button>
+      )}
+    </div>
   </div>
 </header>
 
@@ -83,9 +114,21 @@ export function Layout({ children }: LayoutProps) {
         {/* Content rail */}
         <div className="flex-1 flex justify-center">
           <div className="w-full max-w-7xl px-4 py-6 lg:px-8 relative">
-            {/* Desktop notification aligned to content */}
-            <div className="hidden lg:block fixed top-4 right-4 z-40">
+            {/* Desktop notification + profile aligned to content */}
+            <div className="hidden lg:block fixed top-4 right-4 z-40 flex items-center gap-3">
               <NotificationDropdown />
+              {currentUser && (
+                <button
+                  onClick={() => navigate("/profile")}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                >
+                  <img
+                    src={currentUser.avatar || "https://via.placeholder.com/24"}
+                    alt={currentUser.name}
+                    className="w-6 h-6 rounded-full object-cover"
+                  />
+                </button>
+              )}
             </div>
 
             <main>

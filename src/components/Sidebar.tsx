@@ -1,4 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+
 import {
   Home,
   MessageCircle,
@@ -13,7 +15,7 @@ import {
   ChevronsRight,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { currentUser } from "../data/dummyData";
+import { getMyProfile } from "../services/user.service";
 import { useTheme } from "../contexts/ThemeContext";
 import logo from "../assets/logo.png";
 
@@ -29,6 +31,22 @@ export function Sidebar({ isOpen, onClose, onCreatePost }: SidebarProps) {
 
   const [collapsed, setCollapsed] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const navigate = useNavigate();
+  const [openProfileMenu, setOpenProfileMenu] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const res = await getMyProfile();
+        setCurrentUser(res.data.user);
+      } catch (err) {
+        console.error("Failed to load user profile", err);
+      }
+    };
+
+    loadProfile();
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -45,7 +63,9 @@ export function Sidebar({ isOpen, onClose, onCreatePost }: SidebarProps) {
   ];
 
   const isActive = (path: string) =>
-    path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
+    path === "/"
+      ? location.pathname === "/"
+      : location.pathname.startsWith(path);
 
   return (
     <>
@@ -116,9 +136,11 @@ export function Sidebar({ isOpen, onClose, onCreatePost }: SidebarProps) {
                 onClick={onClose}
                 className={`
                   flex items-center h-12 rounded-xl transition
-                  ${active
-                    ? "bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400"
-                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"}
+                  ${
+                    active
+                      ? "bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400"
+                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  }
                 `}
               >
                 {/* ICON COLUMN — DO NOT TOUCH */}
@@ -158,33 +180,70 @@ export function Sidebar({ isOpen, onClose, onCreatePost }: SidebarProps) {
             )}
           </button>
         </nav>
-
-        {/* User Profile */}
-        <div className="border-t border-gray-200 dark:border-gray-700 p-3">
-          <Link
-            to="/profile"
-            className="flex items-center h-12 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition"
-          >
-            <div className="w-20 flex justify-center">
-              <img
-                src={currentUser.avatar}
-                alt={currentUser.name}
-                className="w-8 h-8 rounded-full object-cover"
-              />
-            </div>
-
-            {!collapsed && (
-              <div className="min-w-0">
-                <p className="text-sm font-medium truncate">
-                  {currentUser.name}
-                </p>
-                <p className="text-xs text-gray-500 truncate">
-                  {currentUser.username}
-                </p>
-              </div>
-            )}
-          </Link>
+{/* User Profile / Sub Sidebar */}
+{currentUser && (
+  <div className="border-t border-gray-200 dark:border-gray-700">
+    {!openProfileMenu ? (
+      /* PROFILE BUTTON */
+      <button
+        onClick={() => setOpenProfileMenu(true)}
+        className="w-full flex items-center h-14 px-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+      >
+        <div className="w-20 flex justify-center">
+          <img
+            src={currentUser.avatar || "https://via.placeholder.com/32"}
+            alt={currentUser.name}
+            className="w-8 h-8 rounded-full object-cover bg-gray-200"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = "https://via.placeholder.com/32";
+            }}
+          />
         </div>
+
+        {!collapsed && (
+          <div className="min-w-0 text-left">
+            <p className="text-sm font-medium truncate">
+              {currentUser.name}
+            </p>
+            <p className="text-xs text-gray-500 truncate">
+              {currentUser.username}
+            </p>
+          </div>
+        )}
+      </button>
+    ) : (
+      /* SUB-SIDEBAR PANEL */
+      <div className="px-3 py-2 space-y-2">
+        <button
+          onClick={() => {
+            setOpenProfileMenu(false);
+            navigate("/profile");
+          }}
+          className="w-full h-10 rounded-lg text-left px-4 hover:bg-gray-100 dark:hover:bg-gray-700"
+        >
+          👤 Profile
+        </button>
+
+        <button
+          onClick={() => {
+            localStorage.removeItem("token");
+            navigate("/auth");
+          }}
+          className="w-full h-10 rounded-lg text-left px-4 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+        >
+          🚪 Logout
+        </button>
+
+        <button
+          onClick={() => setOpenProfileMenu(false)}
+          className="w-full h-10 rounded-lg text-left px-4 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
+        >
+          ← Back
+        </button>
+      </div>
+    )}
+  </div>
+)}
       </aside>
     </>
   );

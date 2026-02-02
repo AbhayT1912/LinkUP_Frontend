@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   MapPin,
   Calendar,
@@ -9,29 +9,62 @@ import {
   Link2,
   Briefcase,
 } from "lucide-react";
-import { currentUser, posts } from "../data/dummyData";
 import { PostCard } from "../components/PostCard";
+import { EditProfileModal } from "../components/EditProfileModal";
+import { getMyProfile } from "../services/user.service";
 
 type ProfileTab = "posts" | "media" | "likes";
 
-interface ProfilePageProps {
-  onEditProfile: () => void;
-}
-
-export function ProfilePage({ onEditProfile }: ProfilePageProps) {
+export function ProfilePage() {
   const [activeTab, setActiveTab] = useState<ProfileTab>("posts");
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  const userPosts = posts.filter((post) => post.userId === currentUser.id);
-  const mediaPosts = posts.filter(
-    (post) => post.image && post.userId === currentUser.id
-  );
-  const likedPosts = posts.filter((post) => post.liked);
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        setLoading(true);
+        const res = await getMyProfile();
+        setUser(res.data.user);
+        setError(null);
+      } catch (err: any) {
+        console.error("Failed to load profile:", err);
+        setError("Failed to load profile");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfile();
+  }, []);
+
+  // Placeholder arrays until posts API is connected
+  const userPosts: any[] = [];
+  const mediaPosts: any[] = [];
+  const likedPosts: any[] = [];
 
   const tabs: { id: ProfileTab; label: string; icon: any }[] = [
     { id: "posts", label: "Posts", icon: FileText },
     { id: "media", label: "Media", icon: Grid3x3 },
     { id: "likes", label: "Likes", icon: Heart },
   ];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-gray-500">Loading profile...</div>
+      </div>
+    );
+  }
+
+  if (error || !user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-red-500">{error || "Profile not found"}</div>
+      </div>
+    );
+  }
 
   const getTabContent = () => {
     switch (activeTab) {
@@ -83,127 +116,130 @@ export function ProfilePage({ onEditProfile }: ProfilePageProps) {
   };
 
   return (
-    <div className="w-full rounded-lg overflow-hidden">
-      {/* PROFILE HEADER */}
-      <div className="bg-gray-100 w-full mt-6">
-        {/* Constrained profile width */}
-        <div className="w-full rounded-lg overflow-hidden">
-          {/* Cover Image */}
-          <div className="relative h-48 md:h-56 w-full rounded-lg overflow-hidden">
-            <img
-              src={currentUser.coverImage}
-              alt="Cover"
-              className="w-full h-full object-cover"
-            />
-          </div>
-
-          {/* Profile Info */}
-          <div className="px-4 md:px-6">
-            {/* Avatar + Button */}
-            <div className="flex items-end justify-between -mt-16 mb-3">
-              <div className="relative">
-                <img
-                  src={currentUser.avatar}
-                  alt={currentUser.name}
-                  className="w-28 h-28 md:w-32 md:h-32 rounded-full border-4 border-white shadow-lg object-cover bg-white"
-                />
-              </div>
-
-              <button
-                onClick={onEditProfile}
-                className="mt-4 flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl shadow-md hover:shadow-lg transition-all font-semibold text-sm"
-              >
-                <Settings className="w-4 h-4" />
-                Edit Profile
-              </button>
+    <>
+      <div className="w-full rounded-lg overflow-hidden">
+        {/* PROFILE HEADER */}
+        <div className="bg-gray-100 w-full mt-6">
+          <div className="w-full rounded-lg overflow-hidden">
+            {/* Cover Image */}
+            <div className="relative h-48 md:h-56 w-full rounded-lg overflow-hidden">
+              <img
+                src={user.coverImage || "/cover-placeholder.jpg"}
+                alt="Cover"
+                className="w-full h-full object-cover"
+              />
             </div>
 
-            {/* Name */}
-            <div className="mb-2">
-              <div className="flex items-center gap-2">
+            {/* Profile Info */}
+            <div className="px-4 md:px-6">
+              {/* Avatar + Button */}
+              <div className="flex items-end justify-between -mt-16 mb-3">
+                <div className="relative">
+                  <img
+                    src={user.avatar || "https://via.placeholder.com/128"}
+                    alt={user.name || user.username}
+                    className="w-28 h-28 md:w-32 md:h-32 rounded-full border-4 border-white shadow-lg object-cover bg-white"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = "https://via.placeholder.com/128";
+                    }}
+                  />
+                </div>
+
+                <button
+                  onClick={() => setIsEditModalOpen(true)}
+                  className="mt-4 flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl shadow-md hover:shadow-lg transition-all font-semibold text-sm"
+                >
+                  <Settings className="w-4 h-4" />
+                  Edit Profile
+                </button>
+              </div>
+
+              {/* Name */}
+              <div className="mb-2">
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-                  {currentUser.name}
+                  {user.name || user.username}
                 </h1>
-                {currentUser.verified && (
-                  <svg
-                    className="w-6 h-6 text-blue-500"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                  >
-                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
-                  </svg>
-                )}
+                <p className="text-gray-500 text-base">@{user.username}</p>
               </div>
-              <p className="text-gray-500 text-base">
-                {currentUser.username}
+
+              {/* Bio */}
+              <p className="text-gray-700 text-base leading-relaxed mb-4 max-w-3xl">
+                {user.bio || "No bio added yet"}
               </p>
-            </div>
 
-            {/* Bio */}
-            <p className="text-gray-700 text-base leading-relaxed mb-4 max-w-3xl">
-              {currentUser.bio}
-            </p>
+              {/* Meta */}
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-gray-600 mb-4">
+                <span className="flex items-center gap-1.5">
+                  <Briefcase className="w-4 h-4 text-purple-600" />
+                  {user.tagline || "—"}
+                </span>
 
-            {/* Meta */}
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-gray-600 mb-4">
-              <span className="flex items-center gap-1.5">
-                <Briefcase className="w-4 h-4 text-purple-600" />
-                Designer & Creative
-              </span>
-              <span className="flex items-center gap-1.5">
-                <MapPin className="w-4 h-4 text-pink-600" />
-                {currentUser.location}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Calendar className="w-4 h-4 text-blue-600" />
-                Joined {currentUser.joinDate}
-              </span>
-              <span className="flex items-center gap-1.5 text-indigo-600 hover:underline cursor-pointer">
-                <Link2 className="w-4 h-4" />
-                portfolio.com
-              </span>
-            </div>
+                <span className="flex items-center gap-1.5">
+                  <MapPin className="w-4 h-4 text-pink-600" />
+                  {user.location || "Not specified"}
+                </span>
 
-            {/* Stats */}
-            <div className="flex items-center gap-6 pb-3 border-b border-gray-200">
-              <StatItem value={currentUser.posts} label="Posts" />
-              <StatItem value={currentUser.followers} label="Followers" />
-              <StatItem value={currentUser.following} label="Following" />
-            </div>
+                <span className="flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 text-blue-600" />
+                  Joined {new Date(user.createdAt).toLocaleDateString()}
+                </span>
 
-            {/* Tabs */}
-            <div className="flex gap-8 pt-2 pb-1">
-              {tabs.map((tab) => {
-                const Icon = tab.icon;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2 px-1 py-3 font-semibold text-sm relative ${
-                      activeTab === tab.id
-                        ? "text-purple-600"
-                        : "text-gray-600 hover:text-gray-900"
-                    }`}
+                {user.links?.map((link: any, i: number) => (
+                  <a
+                    key={i}
+                    href={link.url}
+                    target="_blank"
+                    className="flex items-center gap-1.5 text-indigo-600 hover:underline"
                   >
-                    <Icon className="w-4 h-4" />
-                    {tab.label}
-                    {activeTab === tab.id && (
-                      <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full" />
-                    )}
-                  </button>
-                );
-              })}
+                    <Link2 className="w-4 h-4" />
+                    {link.label}
+                  </a>
+                ))}
+              </div>
+
+              {/* Stats */}
+              <div className="flex items-center gap-6 pb-3 border-b border-gray-200">
+                <StatItem value={userPosts.length} label="Posts" />
+                <StatItem value={user.followers.length} label="Followers" />
+                <StatItem value={user.following.length} label="Following" />
+              </div>
+
+              {/* Tabs */}
+              <div className="flex gap-8 pt-2 pb-1">
+                {tabs.map((tab) => {
+                  const Icon = tab.icon;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`flex items-center gap-2 px-1 py-3 font-semibold text-sm relative ${
+                        activeTab === tab.id
+                          ? "text-purple-600"
+                          : "text-gray-600 hover:text-gray-900"
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      {tab.label}
+                      {activeTab === tab.id && (
+                        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
+
+        {/* CONTENT */}
+        <div className="px-4 md:px-6 py-6">{getTabContent()}</div>
       </div>
 
-      {/* CONTENT */}
-      <div className="px-4 md:px-6 py-6">
-
-        {getTabContent()}
-      </div>
-    </div>
+      <EditProfileModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+      />
+    </>
   );
 }
 

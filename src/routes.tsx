@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router";
+import { createBrowserRouter, Navigate } from "react-router";
 import { AuthPage } from "./pages/AuthPage";
 import { FeedPage } from "./pages/FeedPage";
 import { MessagesPage } from "./pages/MessagesPage";
@@ -6,6 +6,17 @@ import { ConnectionsPage } from "./pages/ConnectionsPage";
 import { DiscoverPage } from "./pages/DiscoverPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { Layout } from "./components/Layout";
+import { RegisterPage } from "./pages/Register";
+
+// Protected Route Component
+function ProtectedRoute({ Component }: { Component: React.ComponentType<any> }) {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    return <Navigate to="/auth" replace />;
+  }
+  return <Component />;
+}
+
 
 function Root() {
   return (
@@ -51,27 +62,31 @@ function Profile() {
 
 export const router = createBrowserRouter([
   {
+    path: "/",
+    element: localStorage.getItem("token") ? <Root /> : <Navigate to="/auth" replace />,
+  },
+  {
     path: "/auth",
     Component: AuthPage,
   },
   {
-    path: "/",
-    Component: Root,
+    path: "/register",
+    Component: RegisterPage,
   },
   {
     path: "/messages",
-    Component: Messages,
+    element: localStorage.getItem("token") ? <Messages /> : <Navigate to="/auth" replace />,
   },
   {
     path: "/connections",
-    Component: Connections,
+    element: localStorage.getItem("token") ? <Connections /> : <Navigate to="/auth" replace />,
   },
   {
     path: "/discover",
-    Component: Discover,
+    element: localStorage.getItem("token") ? <Discover /> : <Navigate to="/auth" replace />,
   },
   {
     path: "/profile",
-    Component: Profile,
+    element: localStorage.getItem("token") ? <Profile /> : <Navigate to="/auth" replace />,
   },
 ]);
