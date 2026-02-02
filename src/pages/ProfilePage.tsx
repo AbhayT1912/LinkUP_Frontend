@@ -122,12 +122,19 @@ export function ProfilePage() {
         <div className="bg-gray-100 w-full mt-6">
           <div className="w-full rounded-lg overflow-hidden">
             {/* Cover Image */}
-            <div className="relative h-48 md:h-56 w-full rounded-lg overflow-hidden">
-              <img
-                src={user.coverImage || "/cover-placeholder.jpg"}
-                alt="Cover"
-                className="w-full h-full object-cover"
-              />
+            <div className="relative h-48 md:h-56 w-full rounded-lg overflow-hidden bg-gradient-to-r from-purple-200 to-pink-200">
+              {user.coverImage ? (
+                <img
+                  src={user.coverImage}
+                  alt="Cover"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = "";
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-r from-purple-300 to-pink-300"></div>
+              )}
             </div>
 
             {/* Profile Info */}
@@ -155,47 +162,57 @@ export function ProfilePage() {
               </div>
 
               {/* Name */}
-              <div className="mb-2">
+              <div className="mb-3">
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
                   {user.name || user.username}
                 </h1>
                 <p className="text-gray-500 text-base">@{user.username}</p>
               </div>
 
+              {/* Tagline */}
+              {user.tagline && (
+                <p className="text-gray-600 text-lg font-medium mb-4">
+                  {user.tagline}
+                </p>
+              )}
+
               {/* Bio */}
-              <p className="text-gray-700 text-base leading-relaxed mb-4 max-w-3xl">
+              <p className="text-gray-700 text-base leading-relaxed mb-6 max-w-3xl">
                 {user.bio || "No bio added yet"}
               </p>
 
               {/* Meta */}
-              <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-gray-600 mb-4">
-                <span className="flex items-center gap-1.5">
-                  <Briefcase className="w-4 h-4 text-purple-600" />
-                  {user.tagline || "—"}
-                </span>
+              {/* Meta */}
+<div className="flex flex-wrap items-center gap-x-10 gap-y-4 text-sm text-gray-600 mb-6">
+  {/* Location */}
+  <div className="flex items-center gap-2">
+    <MapPin className="w-4 h-4 text-pink-600" />
+    <span>{user.location || "Not specified"}</span>
+  </div>
 
-                <span className="flex items-center gap-1.5">
-                  <MapPin className="w-4 h-4 text-pink-600" />
-                  {user.location || "Not specified"}
-                </span>
+  {/* Joined Date */}
+  <div className="flex items-center gap-2">
+    <Calendar className="w-4 h-4 text-blue-600" />
+    <span>
+      Joined {new Date(user.createdAt).toLocaleDateString()}
+    </span>
+  </div>
 
-                <span className="flex items-center gap-1.5">
-                  <Calendar className="w-4 h-4 text-blue-600" />
-                  Joined {new Date(user.createdAt).toLocaleDateString()}
-                </span>
+  {/* Links (GitHub etc.) */}
+  {user.links?.map((link: any, i: number) => (
+    <a
+      key={i}
+      href={link.url}
+      target="_blank"
+      rel="noreferrer"
+      className="flex items-center gap-2 text-indigo-600 hover:underline"
+    >
+      <Link2 className="w-4 h-4" />
+      <span>{link.label}</span>
+    </a>
+  ))}
+</div>
 
-                {user.links?.map((link: any, i: number) => (
-                  <a
-                    key={i}
-                    href={link.url}
-                    target="_blank"
-                    className="flex items-center gap-1.5 text-indigo-600 hover:underline"
-                  >
-                    <Link2 className="w-4 h-4" />
-                    {link.label}
-                  </a>
-                ))}
-              </div>
 
               {/* Stats */}
               <div className="flex items-center gap-6 pb-3 border-b border-gray-200">

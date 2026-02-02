@@ -86,21 +86,9 @@ export function Layout({ children }: LayoutProps) {
       <Menu className="w-6 h-6 text-gray-700 dark:text-gray-300" />
     </button>
 
-    {/* Bell + Profile Icons */}
+    {/* Bell Icon */}
     <div className="flex items-center gap-2">
       <NotificationDropdown />
-      {currentUser && (
-        <button
-          onClick={() => navigate("/profile")}
-          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-        >
-          <img
-            src={currentUser.avatar || "https://via.placeholder.com/24"}
-            alt={currentUser.name}
-            className="w-6 h-6 rounded-full object-cover"
-          />
-        </button>
-      )}
     </div>
   </div>
 </header>
