@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from "react-router";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 import { AuthPage } from "./pages/AuthPage";
 import { FeedPage } from "./pages/FeedPage";
 import { MessagesPage } from "./pages/MessagesPage";
@@ -8,15 +8,17 @@ import { ProfilePage } from "./pages/ProfilePage";
 import { Layout } from "./components/Layout";
 import { RegisterPage } from "./pages/Register";
 
-// Protected Route Component
-function ProtectedRoute({ Component }: { Component: React.ComponentType<any> }) {
-  const token = localStorage.getItem("token");
-  if (!token) {
-    return <Navigate to="/auth" replace />;
-  }
-  return <Component />;
-}
+/* =========================
+   HELPERS
+   ========================= */
 
+const isAuthenticated = () => {
+  return !!localStorage.getItem("token");
+};
+
+/* =========================
+   LAYOUT WRAPPERS
+   ========================= */
 
 function Root() {
   return (
@@ -55,38 +57,48 @@ function Discover() {
 function Profile() {
   return (
     <Layout>
-      {({ onEditProfile }) => <ProfilePage onEditProfile={onEditProfile} />}
+      {({ onEditProfile }) => (
+        <ProfilePage onEditProfile={onEditProfile} />
+      )}
     </Layout>
   );
 }
 
+/* =========================
+   ROUTER
+   ========================= */
+
 export const router = createBrowserRouter([
   {
     path: "/",
-    element: localStorage.getItem("token") ? <Root /> : <Navigate to="/auth" replace />,
+    element: isAuthenticated() ? <Root /> : <Navigate to="/auth" replace />,
   },
   {
     path: "/auth",
-    Component: AuthPage,
+    element: <AuthPage />,
   },
   {
     path: "/register",
-    Component: RegisterPage,
+    element: <RegisterPage />,
   },
   {
     path: "/messages",
-    element: localStorage.getItem("token") ? <Messages /> : <Navigate to="/auth" replace />,
+    element: isAuthenticated() ? <Messages /> : <Navigate to="/auth" replace />,
   },
   {
     path: "/connections",
-    element: localStorage.getItem("token") ? <Connections /> : <Navigate to="/auth" replace />,
+    element: isAuthenticated() ? (
+      <Connections />
+    ) : (
+      <Navigate to="/auth" replace />
+    ),
   },
   {
     path: "/discover",
-    element: localStorage.getItem("token") ? <Discover /> : <Navigate to="/auth" replace />,
+    element: isAuthenticated() ? <Discover /> : <Navigate to="/auth" replace />,
   },
   {
     path: "/profile",
-    element: localStorage.getItem("token") ? <Profile /> : <Navigate to="/auth" replace />,
+    element: isAuthenticated() ? <Profile /> : <Navigate to="/auth" replace />,
   },
 ]);

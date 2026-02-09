@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X, Image as ImageIcon, Smile } from "lucide-react";
-import { currentUser } from "../data/dummyData";
 import { compressImageToBase64 } from "../utils/imageCompression";
+import { createPost } from "../services/post.service";
+import { getMyProfile } from "../services/user.service";
 
 interface CreatePostModalProps {
   isOpen: boolean;
@@ -12,9 +13,67 @@ export function CreatePostModal({ isOpen, onClose }: CreatePostModalProps) {
   const [content, setContent] = useState("");
   const [images, setImages] = useState<string[]>([]);
   const [isCompressing, setIsCompressing] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
-  if (!isOpen) return null;
+  /* =========================
+     FETCH LOGGED-IN USER
+     ========================= */
+  useEffect(() => {
+    if (!isOpen) return;
 
+    const fetchProfile = async () => {
+      try {
+        const res = await getMyProfile();
+        setCurrentUser(res.data.user);
+      } catch (err) {
+        console.error("Failed to fetch profile", err);
+      }
+    };
+
+    fetchProfile();
+  }, [isOpen]);
+
+  if (!isOpen || !currentUser) return null;
+
+  /* =========================
+     SUBMIT POST
+     ========================= */
+  const handleSubmit = async () => {
+    if (!content.trim() && images.length === 0) return;
+
+    const formData = new FormData();
+    formData.append("caption", content);
+
+    // Convert base64 images to File objects
+    for (let i = 0; i < images.length; i++) {
+  const res = await fetch(images[i]);
+  const blob = await res.blob();
+
+  if (!blob.type.startsWith("image/")) {
+    throw new Error("Invalid image file");
+  }
+
+  const file = new File([blob], `post-${Date.now()}-${i}.jpg`, {
+    type: blob.type,
+  });
+
+  formData.append("media", file);
+}
+
+
+    try {
+      await createPost(formData);
+      setContent("");
+      setImages([]);
+      onClose();
+    } catch (err) {
+      console.error("Failed to create post", err);
+    }
+  };
+
+  /* =========================
+     IMAGE UPLOAD
+     ========================= */
   const handleImageUpload = async (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
@@ -43,18 +102,6 @@ export function CreatePostModal({ isOpen, onClose }: CreatePostModalProps) {
     setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // ✅ THIS WAS MISSING
-  const handleSubmit = () => {
-    if (!content.trim()) return;
-
-    console.log("Post content:", content);
-    console.log("Post images:", images);
-
-    setContent("");
-    setImages([]);
-    onClose();
-  };
-
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -77,14 +124,11 @@ export function CreatePostModal({ isOpen, onClose }: CreatePostModalProps) {
           <div className="flex items-center gap-3 mb-4">
             <img
               src={currentUser.avatar}
-              alt={currentUser.name}
+              alt={currentUser.username}
               className="w-12 h-12 rounded-full object-cover"
             />
             <div>
               <p className="font-semibold text-gray-900 dark:text-white">
-                {currentUser.name}
-              </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
                 {currentUser.username}
               </p>
             </div>
@@ -146,9 +190,12 @@ export function CreatePostModal({ isOpen, onClose }: CreatePostModalProps) {
 
           <button
             onClick={handleSubmit}
-            disabled={content.trim().length === 0 || isCompressing}
+            disabled={
+              (content.trim().length === 0 && images.length === 0) ||
+              isCompressing
+            }
             className={`w-full py-3 rounded-xl font-medium ${
-              content.trim().length > 0 && !isCompressing
+              (content.trim().length > 0 || images.length > 0) && !isCompressing
                 ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white"
                 : "bg-gray-100 text-gray-400 cursor-not-allowed"
             }`}

@@ -1,51 +1,120 @@
 import { useState } from "react";
-import { Heart, MessageCircle, Share2, MoreHorizontal, Play, BarChart3 } from "lucide-react";
-import { Post, users } from "../data/dummyData";
+import {
+  Heart,
+  MessageCircle,
+  Share2,
+  MoreHorizontal,
+  Play,
+  BarChart3,
+  Send,
+} from "lucide-react";
+import {
+  likePost,
+  addComment,
+  getPostComments,
+} from "../services/post.service";
 
 interface PostCardProps {
-  post: Post;
+  post: any;
 }
 
 export function PostCard({ post }: PostCardProps) {
-  const [liked, setLiked] = useState(post.liked || false);
-  const [likes, setLikes] = useState(post.likes);
-  const [selectedPollOption, setSelectedPollOption] = useState<string | null>(null);
-
-  const user = users.find(u => u.id === post.userId);
+  const user = post.user;
   if (!user) return null;
 
-  const handleLike = () => {
-    if (liked) {
-      setLikes(likes - 1);
-      setLiked(false);
-    } else {
-      setLikes(likes + 1);
-      setLiked(true);
+  /* =========================
+     LIKE STATE (BACKEND ALIGNED)
+     ========================= */
+  const [liked, setLiked] = useState<boolean>(
+    post.likes?.includes(post.currentUserId),
+  );
+  const [likesCount, setLikesCount] = useState<number>(post.likes?.length || 0);
+
+  const [selectedPollOption, setSelectedPollOption] = useState<number | null>(
+    null,
+  );
+  const [showComments, setShowComments] = useState(false);
+  const [comments, setComments] = useState<any[]>([]);
+  const [commentsPage, setCommentsPage] = useState(1);
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [commentText, setCommentText] = useState("");
+  const [commentsCount, setCommentsCount] = useState(
+    post.comments?.length || 0,
+  );
+
+  const toggleComments = async () => {
+    if (showComments) {
+      setShowComments(false);
+      return;
+    }
+
+    try {
+      setLoadingComments(true);
+      const res = await getPostComments(post._id, 1);
+      setComments(res.data.comments || []);
+      setCommentsPage(1);
+      setShowComments(true);
+    } catch (err) {
+      console.error("Failed to load comments", err);
+    } finally {
+      setLoadingComments(false);
     }
   };
 
-  const handlePollVote = (optionId: string) => {
-    if (!selectedPollOption) {
-      setSelectedPollOption(optionId);
+  const handleAddComment = async () => {
+    if (!commentText.trim()) return;
+
+    try {
+      await addComment(post._id, commentText);
+      setCommentsCount((prev) => prev + 1);
+      setCommentText("");
+    } catch (err) {
+      console.error("Failed to add comment", err);
     }
   };
 
-  const renderPollOption = (option: { id: string; text: string; votes: number }) => {
-    const percentage = post.poll ? (option.votes / post.poll.totalVotes) * 100 : 0;
-    const isSelected = selectedPollOption === option.id;
+  /* =========================
+     HANDLE LIKE
+     ========================= */
+  const handleLike = async () => {
+    try {
+      const res = await likePost(post._id);
+
+      setLiked(res.data.liked);
+      setLikesCount(res.data.likesCount);
+    } catch (err) {
+      console.error("Failed to like post", err);
+    }
+  };
+
+  /* =========================
+     POLL VOTE (UI ONLY FOR NOW)
+     ========================= */
+  const handlePollVote = (index: number) => {
+    if (selectedPollOption !== null) return;
+    setSelectedPollOption(index);
+  };
+
+  const renderPollOption = (
+    option: { text: string; votes: number },
+    index: number,
+  ) => {
+    const totalVotes = post.poll.totalVotes || 1;
+    const percentage = (option.votes / totalVotes) * 100;
+    const isSelected = selectedPollOption === index;
     const hasVoted = selectedPollOption !== null;
 
     return (
       <button
-        key={option.id}
-        onClick={() => handlePollVote(option.id)}
+        key={index}
+        onClick={() => handlePollVote(index)}
         disabled={hasVoted}
         className={`relative w-full p-4 rounded-xl border-2 transition-all text-left ${
           isSelected
             ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20"
             : hasVoted
-            ? "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
-            : "border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 hover:bg-purple-50/50 dark:hover:bg-purple-900/10"
+              ? "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
+              : "border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 hover:bg-purple-50/50 dark:hover:bg-purple-900/10"
         } ${hasVoted ? "cursor-default" : "cursor-pointer"}`}
       >
         {hasVoted && (
@@ -55,7 +124,9 @@ export function PostCard({ post }: PostCardProps) {
           />
         )}
         <div className="relative flex items-center justify-between">
-          <span className="font-medium text-gray-900 dark:text-white">{option.text}</span>
+          <span className="font-medium text-gray-900 dark:text-white">
+            {option.text}
+          </span>
           {hasVoted && (
             <span className="text-sm font-bold text-purple-600 dark:text-purple-400">
               {percentage.toFixed(1)}%
@@ -73,63 +144,42 @@ export function PostCard({ post }: PostCardProps) {
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden hover:shadow-md transition-shadow">
-      {/* Post Header */}
+      {/* Header */}
       <div className="p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <img
             src={user.avatar}
-            alt={user.name}
+            alt={user.username}
             className="w-12 h-12 rounded-full object-cover"
           />
           <div>
-            <div className="flex items-center gap-1">
-              <p className="font-semibold text-gray-900 dark:text-white">{user.name}</p>
-              {user.verified && (
-                <svg className="w-4 h-4 text-blue-500" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
-                </svg>
-              )}
-            </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{user.username} · {post.timestamp}</p>
+            <p className="font-semibold text-gray-900 dark:text-white">
+              {user.username}
+            </p>
           </div>
         </div>
-        <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
+        <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
           <MoreHorizontal className="w-5 h-5 text-gray-600 dark:text-gray-400" />
         </button>
       </div>
 
-      {/* Post Content */}
-      <div className="px-4 pb-3">
-        <p className="text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap">{post.content}</p>
-      </div>
-
-      {/* Post Image */}
-      {post.type === "image" && post.image && (
+      {/* Caption */}
+      {post.caption && (
         <div className="px-4 pb-3">
-          <img
-            src={post.image}
-            alt="Post content"
-            className="w-full rounded-xl object-cover max-h-96"
-          />
+          <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+            {post.caption}
+          </p>
         </div>
       )}
 
-      {/* Post Video */}
-      {post.type === "video" && post.video && (
+      {/* Media (Images) */}
+      {post.media?.length > 0 && (
         <div className="px-4 pb-3">
-          <div className="relative w-full rounded-xl overflow-hidden bg-black group">
-            <video
-              src={post.video}
-              controls
-              className="w-full max-h-96 object-contain"
-              poster="https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?w=800&h=600&fit=crop"
-            >
-              Your browser does not support the video tag.
-            </video>
-            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none flex items-center justify-center">
-              <Play className="w-16 h-16 text-white" />
-            </div>
-          </div>
+          <img
+            src={post.media[0]}
+            alt="Post content"
+            className="w-full rounded-xl object-cover max-h-96"
+          />
         </div>
       )}
 
@@ -139,7 +189,9 @@ export function PostCard({ post }: PostCardProps) {
           <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 space-y-3">
             <div className="flex items-center gap-2 mb-3">
               <BarChart3 className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-              <span className="font-medium text-gray-900 dark:text-white">{post.poll.question}</span>
+              <span className="font-medium text-gray-900 dark:text-white">
+                {post.poll.question}
+              </span>
             </div>
             <div className="space-y-2">
               {post.poll.options.map(renderPollOption)}
@@ -152,27 +204,81 @@ export function PostCard({ post }: PostCardProps) {
         </div>
       )}
 
-      {/* Post Actions */}
+      {/* Actions */}
+      {/* Actions */}
       <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
         <button
           onClick={handleLike}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
             liked
-              ? "text-pink-600 bg-pink-50 hover:bg-pink-100 dark:bg-pink-900/20 dark:hover:bg-pink-900/30"
-              : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+              ? "text-pink-600 bg-pink-50 dark:bg-pink-900/20"
+              : "text-gray-600 dark:text-gray-400"
           }`}
         >
           <Heart className={`w-5 h-5 ${liked ? "fill-current" : ""}`} />
-          <span className="text-sm font-medium">{likes}</span>
+          <span className="text-sm font-medium">{likesCount}</span>
         </button>
-        <button className="flex items-center gap-2 px-4 py-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+
+        <button
+          onClick={toggleComments}
+          className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-purple-600"
+        >
           <MessageCircle className="w-5 h-5" />
-          <span className="text-sm font-medium">{post.comments}</span>
+          <span className="text-sm font-medium">{commentsCount}</span>
         </button>
-        <button className="flex items-center gap-2 px-4 py-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+
+        <div className="flex items-center gap-2 px-4 py-2 text-gray-600">
           <Share2 className="w-5 h-5" />
-          <span className="text-sm font-medium">{post.shares}</span>
-        </button>
+          <span className="text-sm font-medium">{post.shares || 0}</span>
+        </div>
+      </div>
+      {/* Comments dropdown */}
+      {showComments && (
+        <div className="px-4 pb-4 border-t">
+          {loadingComments ? (
+            <p className="text-sm text-gray-400 py-3">Loading comments…</p>
+          ) : comments.length === 0 ? (
+            <p className="text-sm text-gray-400 py-3">No comments yet</p>
+          ) : (
+            <div className="space-y-3 pt-3">
+              {comments.map((c) => (
+                <div key={c._id} className="flex gap-3">
+                  <img
+                    src={c.user.avatar}
+                    alt={c.user.username}
+                    className="w-8 h-8 rounded-full"
+                  />
+                  <div className="bg-gray-100 rounded-xl px-3 py-2 text-sm">
+                    <span className="font-semibold mr-1">
+                      {c.user.username}
+                    </span>
+                    {c.text}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      {/* Comment input */}
+      <div className="px-4 pb-4 border-t">
+        <div className="flex items-center gap-2 pt-3">
+          <input
+            value={commentText}
+            onChange={(e) => setCommentText(e.target.value)}
+            placeholder="Add a comment..."
+            className="flex-1 border rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+          />
+
+          <button
+            onClick={handleAddComment}
+            disabled={!commentText.trim()}
+            className="p-2 bg-purple-500 text-white rounded-full hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Post comment"
+          >
+            <Send size={16} />
+          </button>
+        </div>
       </div>
     </div>
   );

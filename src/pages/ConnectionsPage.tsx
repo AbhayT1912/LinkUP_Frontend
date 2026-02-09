@@ -1,73 +1,205 @@
-import { useState } from "react";
-import { Users, UserPlus, Clock, UserCheck } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Users, UserCheck } from "lucide-react";
 import { UserCard } from "../components/UserCard";
-import { users } from "../data/dummyData";
+import {
+  getMyFollowers,
+  getMyFollowing,
+  followUser,
+} from "../services/user.service";
 
-type Tab = "all" | "followers" | "following" | "pending";
+type Tab = "followers" | "following";
+
+interface User {
+  _id: string;
+  name: string;
+  username: string;
+  avatar?: string;
+  bio?: string;
+}
 
 export function ConnectionsPage() {
-  const [activeTab, setActiveTab] = useState<Tab>("all");
+  const [activeTab, setActiveTab] = useState<Tab>("followers");
+  const [followers, setFollowers] = useState<User[]>([]);
+  const [following, setFollowing] = useState<User[]>([]);
+  const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const stats = [
-    { label: "Followers", value: "12.5K", icon: Users, color: "from-purple-500 to-pink-500" },
-    { label: "Following", value: "847", icon: UserCheck, color: "from-blue-500 to-purple-500" },
-    { label: "Pending", value: "23", icon: Clock, color: "from-pink-500 to-orange-500" },
-    { label: "Connections", value: "5.2K", icon: UserPlus, color: "from-green-500 to-blue-500" },
-  ];
+  /* =========================
+     LOAD CONNECTIONS
+     ========================= */
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        setError(""); // Clear any previous errors
 
-  const tabs: { id: Tab; label: string }[] = [
-    { id: "all", label: "All Connections" },
-    { id: "followers", label: "Followers" },
-    { id: "following", label: "Following" },
-    { id: "pending", label: "Pending" },
-  ];
+        const [followersRes, followingRes] = await Promise.all([
+          getMyFollowers(),
+          getMyFollowing(),
+        ]);
+
+        console.log("Followers Response:", followersRes);
+        console.log("Following Response:", followingRes);
+
+        // Handle different possible response structures
+        const followersList = Array.isArray(followersRes.data)
+          ? followersRes.data
+          : followersRes.data?.users || followersRes.data?.followers || [];
+
+        const followingList = Array.isArray(followingRes.data)
+          ? followingRes.data
+          : followingRes.data?.users || followingRes.data?.following || [];
+
+        console.log("Processed Followers:", followersList);
+        console.log("Processed Following:", followingList);
+
+        setFollowers(followersList);
+        setFollowing(followingList);
+        setFollowingIds(
+          new Set(followingList.map((u: User) => u._id))
+        );
+      } catch (err: any) {
+        console.error("Error loading connections:", err);
+        console.error("Error response:", err.response);
+        setError(err.response?.data?.message || "Failed to load connections");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, []);
+
+  /* =========================
+     FOLLOW BACK (ONLY IN FOLLOWERS TAB)
+     ========================= */
+  const handleFollowBack = async (userId: string) => {
+    try {
+      await followUser(userId);
+
+      // Find the user from followers array
+      const userToAdd = followers.find(u => u._id === userId);
+      
+      if (userToAdd) {
+        // Update local state
+        setFollowingIds((prev) => {
+          const newSet = new Set(prev);
+          newSet.add(userId);
+          return newSet;
+        });
+        
+        setFollowing((prev) => {
+          // Check if user is already in following list
+          if (prev.some(u => u._id === userId)) {
+            return prev;
+          }
+          return [...prev, userToAdd];
+        });
+      }
+    } catch (err) {
+      console.error("Follow back failed", err);
+      // Optionally show error to user
+      alert("Failed to follow user. Please try again.");
+    }
+  };
+
+  const activeUsers = activeTab === "followers" ? followers : following;
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-10 text-center text-gray-500">
+        Loading connections...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-10 text-center text-red-500">
+        {error}
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {stats.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <div
-              key={stat.label}
-              className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow"
-            >
-              <div className={`w-12 h-12 rounded-xl bg-gradient-to-r ${stat.color} flex items-center justify-center mb-3`}>
-                <Icon className="w-6 h-6 text-white" />
-              </div>
-              <p className="text-2xl font-bold text-gray-900 mb-1">{stat.value}</p>
-              <p className="text-sm text-gray-500">{stat.label}</p>
+      {/* Dashboard */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-white rounded-2xl border p-5">
+          <div className="flex items-center gap-3">
+            <Users className="w-8 h-8 text-purple-500" />
+            <div>
+              <p className="text-2xl font-bold">{followers.length}</p>
+              <p className="text-sm text-gray-500">Followers</p>
             </div>
-          );
-        })}
-      </div>
+          </div>
+        </div>
 
-      {/* Tabs */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-2">
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 min-w-fit px-6 py-3 rounded-xl font-medium transition-all ${
-                activeTab === tab.id
-                  ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg"
-                  : "text-gray-600 hover:bg-gray-50"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        <div className="bg-white rounded-2xl border p-5">
+          <div className="flex items-center gap-3">
+            <UserCheck className="w-8 h-8 text-blue-500" />
+            <div>
+              <p className="text-2xl font-bold">{following.length}</p>
+              <p className="text-sm text-gray-500">Following</p>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* User Grid */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {users.map((user) => (
-          <UserCard key={user.id} user={user} showFollowButton={true} />
-        ))}
+      {/* Tabs */}
+      <div className="bg-white rounded-2xl border p-2 flex gap-2">
+        <button
+          onClick={() => setActiveTab("followers")}
+          className={`flex-1 py-3 rounded-xl font-medium transition-colors ${
+            activeTab === "followers"
+              ? "bg-purple-500 text-white"
+              : "text-gray-600 hover:bg-gray-100"
+          }`}
+        >
+          Followers ({followers.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab("following")}
+          className={`flex-1 py-3 rounded-xl font-medium transition-colors ${
+            activeTab === "following"
+              ? "bg-purple-500 text-white"
+              : "text-gray-600 hover:bg-gray-100"
+          }`}
+        >
+          Following ({following.length})
+        </button>
       </div>
+
+      {/* Users */}
+      {activeUsers.length === 0 ? (
+        <div className="text-center text-gray-500 py-10">
+          <p className="text-lg font-medium mb-2">No users found</p>
+          <p className="text-sm">
+            {activeTab === "followers" 
+              ? "You don't have any followers yet." 
+              : "You're not following anyone yet."}
+          </p>
+        </div>
+      ) : (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {activeUsers.map((user) => {
+            const isFollowing = followingIds.has(user._id);
+
+            return (
+              <UserCard
+                key={user._id}
+                user={user}
+                isFollowing={isFollowing}
+                showFollowButton={activeTab === "followers"}
+                disableFollow={isFollowing}
+                onFollowToggle={() => handleFollowBack(user._id)}
+              />
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

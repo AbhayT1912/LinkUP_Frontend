@@ -4,9 +4,7 @@ export const getFeedPosts = (page = 1, limit = 10) =>
   api.get(`/posts/feed?page=${page}&limit=${limit}`);
 
 export const createPost = (formData) =>
-  api.post("/posts", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  api.post("/posts", formData);
 
 export const likePost = (postId) =>
   api.post(`/posts/${postId}/like`);
