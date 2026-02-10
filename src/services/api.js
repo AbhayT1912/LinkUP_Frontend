@@ -1,15 +1,24 @@
 import axios from "axios";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+// Read base URL from Vite env
+const RAW_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+if (!RAW_BASE_URL) {
+  throw new Error("❌ VITE_API_BASE_URL is not defined");
+}
+
+// Normalize URL and append `/api`
+const API_BASE_URL = `${RAW_BASE_URL.replace(/\/$/, "")}/api`;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// Add token to requests
+// Attach token if present
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
@@ -21,7 +30,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Handle responses
+// Handle auth errors globally
 api.interceptors.response.use(
   (response) => response,
   (error) => {
