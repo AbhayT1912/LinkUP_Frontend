@@ -1,59 +1,64 @@
 import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { getPostsByUser } from "../services/post.service";
 import {
   MapPin,
   Calendar,
   Settings,
-  Grid3x3,
-  Heart,
   FileText,
   Link2,
-  Briefcase,
 } from "lucide-react";
 import { PostCard } from "../components/PostCard";
 import { EditProfileModal } from "../components/EditProfileModal";
 import { getMyProfile } from "../services/user.service";
 
-type ProfileTab = "posts" | "media" | "likes";
-
 export function ProfilePage() {
-  const [activeTab, setActiveTab] = useState<ProfileTab>("posts");
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   useEffect(() => {
-    const fetchProfile = async () => {
+    const fetchProfileAndPosts = async () => {
       try {
         setLoading(true);
+
         const res = await getMyProfile();
-        setUser(res.data.user);
+        const userData = res.data.user;
+        setUser(userData);
+
+        // 🔥 Fetch posts by this user
+        const postsRes = await getPostsByUser(userData._id);
+        setUserPosts(postsRes.data.posts || []);
+
         setError(null);
-      } catch (err: any) {
+      } catch (err) {
         console.error("Failed to load profile:", err);
         setError("Failed to load profile");
       } finally {
         setLoading(false);
+        setLoadingPosts(false);
       }
     };
-    fetchProfile();
+
+    fetchProfileAndPosts();
   }, []);
 
   // Placeholder arrays until posts API is connected
-  const userPosts: any[] = [];
-  const mediaPosts: any[] = [];
-  const likedPosts: any[] = [];
-
-  const tabs: { id: ProfileTab; label: string; icon: any }[] = [
-    { id: "posts", label: "Posts", icon: FileText },
-    { id: "media", label: "Media", icon: Grid3x3 },
-    { id: "likes", label: "Likes", icon: Heart },
-  ];
+  const [userPosts, setUserPosts] = useState<any[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(true);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-gray-500">Loading profile...</div>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, repeat: Infinity, repeatType: "reverse" }}
+          className="text-gray-500"
+        >
+          Loading profile...
+        </motion.div>
       </div>
     );
   }
@@ -61,70 +66,40 @@ export function ProfilePage() {
   if (error || !user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-red-500">{error || "Profile not found"}</div>
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-red-500"
+        >
+          {error || "Profile not found"}
+        </motion.div>
       </div>
     );
   }
 
-  const getTabContent = () => {
-    switch (activeTab) {
-      case "posts":
-        return userPosts.length ? (
-          <div className="space-y-5">
-            {userPosts.map((post) => (
-              <PostCard key={post.id} post={post} />
-            ))}
-          </div>
-        ) : (
-          <EmptyState text="No posts yet" icon={FileText} />
-        );
-
-      case "media":
-        return mediaPosts.length ? (
-          <div className="grid grid-cols-3 md:grid-cols-4 gap-4">
-            {mediaPosts.map((post) => (
-              <div
-                key={post.id}
-                className="aspect-square rounded-lg overflow-hidden group cursor-pointer relative"
-              >
-                <img
-                  src={post.image}
-                  alt="Post media"
-                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                />
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                  <Heart className="w-6 h-6 text-white" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <EmptyState text="No media posts yet" icon={Grid3x3} />
-        );
-
-      case "likes":
-        return likedPosts.length ? (
-          <div className="space-y-5">
-            {likedPosts.map((post) => (
-              <PostCard key={post.id} post={post} />
-            ))}
-          </div>
-        ) : (
-          <EmptyState text="No liked posts yet" icon={Heart} />
-        );
-    }
-  };
-
   return (
     <>
-      <div className="w-full rounded-lg overflow-hidden">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6 }}
+        className="w-full rounded-lg overflow-hidden"
+      >
         {/* PROFILE HEADER */}
         <div className="bg-gray-100 w-full mt-6">
           <div className="w-full rounded-lg overflow-hidden">
             {/* Cover Image */}
-            <div className="relative h-48 md:h-56 w-full rounded-lg overflow-hidden bg-gradient-to-r from-purple-200 to-pink-200">
+            <motion.div
+              initial={{ opacity: 0, scale: 1.1 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+              className="relative h-48 md:h-56 w-full rounded-lg overflow-hidden bg-gradient-to-r from-purple-200 to-pink-200"
+            >
               {user.coverImage ? (
-                <img
+                <motion.img
+                  initial={{ scale: 1.2, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 1, ease: "easeOut" }}
                   src={user.coverImage}
                   alt="Cover"
                   className="w-full h-full object-cover"
@@ -133,124 +108,249 @@ export function ProfilePage() {
                   }}
                 />
               ) : (
-                <div className="w-full h-full bg-gradient-to-r from-purple-300 to-pink-300"></div>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.8 }}
+                  className="w-full h-full bg-gradient-to-r from-purple-300 to-pink-300"
+                ></motion.div>
               )}
-            </div>
+            </motion.div>
 
             {/* Profile Info */}
             <div className="px-4 md:px-6">
               {/* Avatar + Button */}
               <div className="flex items-end justify-between -mt-16 mb-3">
-                <div className="relative">
-                  <img
+                <motion.div
+                  initial={{ scale: 0, rotate: -180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 260,
+                    damping: 20,
+                    delay: 0.2,
+                  }}
+                  className="relative"
+                >
+                  <motion.img
+                    whileHover={{ scale: 1.05, rotate: 2 }}
+                    transition={{ type: "spring", stiffness: 300 }}
                     src={user.avatar || "https://via.placeholder.com/128"}
                     alt={user.name || user.username}
                     className="w-28 h-28 md:w-32 md:h-32 rounded-full border-4 border-white shadow-lg object-cover bg-white"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = "https://via.placeholder.com/128";
+                      (e.target as HTMLImageElement).src =
+                        "https://via.placeholder.com/128";
                     }}
                   />
-                </div>
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.5, type: "spring" }}
+                    className="absolute -bottom-1 -right-1 w-8 h-8 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full border-4 border-white"
+                  />
+                </motion.div>
 
-                <button
+                <motion.button
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.3, duration: 0.5 }}
+                  whileHover={{
+                    scale: 1.05,
+                    boxShadow: "0 10px 30px rgba(147, 51, 234, 0.3)",
+                  }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => setIsEditModalOpen(true)}
                   className="mt-4 flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl shadow-md hover:shadow-lg transition-all font-semibold text-sm"
                 >
-                  <Settings className="w-4 h-4" />
+                  <motion.div
+                    animate={{ rotate: [0, 180, 360] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                  >
+                    <Settings className="w-4 h-4" />
+                  </motion.div>
                   Edit Profile
-                </button>
+                </motion.button>
               </div>
 
               {/* Name */}
-              <div className="mb-3">
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4, duration: 0.5 }}
+                className="mb-3"
+              >
+                <motion.h1
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.5, duration: 0.5 }}
+                  className="text-2xl md:text-3xl font-bold text-gray-900"
+                >
                   {user.name || user.username}
-                </h1>
-                <p className="text-gray-500 text-base">@{user.username}</p>
-              </div>
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.6, duration: 0.5 }}
+                  className="text-gray-500 text-base"
+                >
+                  @{user.username}
+                </motion.p>
+              </motion.div>
 
               {/* Tagline */}
               {user.tagline && (
-                <p className="text-gray-600 text-lg font-medium mb-4">
+                <motion.p
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.7, duration: 0.5 }}
+                  className="text-gray-600 text-lg font-medium mb-4"
+                >
                   {user.tagline}
-                </p>
+                </motion.p>
               )}
 
               {/* Bio */}
-              <p className="text-gray-700 text-base leading-relaxed mb-6 max-w-3xl">
+              <motion.p
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.8, duration: 0.5 }}
+                className="text-gray-700 text-base leading-relaxed mb-6 max-w-3xl"
+              >
                 {user.bio || "No bio added yet"}
-              </p>
+              </motion.p>
 
               {/* Meta */}
-              {/* Meta */}
-<div className="flex flex-wrap items-center gap-x-10 gap-y-4 text-sm text-gray-600 mb-6">
-  {/* Location */}
-  <div className="flex items-center gap-2">
-    <MapPin className="w-4 h-4 text-pink-600" />
-    <span>{user.location || "Not specified"}</span>
-  </div>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.9, duration: 0.5 }}
+                className="flex flex-wrap items-center gap-x-10 gap-y-4 text-sm text-gray-600 mb-6"
+              >
+                {/* Location */}
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 1, duration: 0.4 }}
+                  whileHover={{ scale: 1.05, x: 5 }}
+                  className="flex items-center gap-2"
+                >
+                  <motion.div
+                    animate={{ y: [0, -2, 0] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    <MapPin className="w-4 h-4 text-pink-600" />
+                  </motion.div>
+                  <span>{user.location || "Not specified"}</span>
+                </motion.div>
 
-  {/* Joined Date */}
-  <div className="flex items-center gap-2">
-    <Calendar className="w-4 h-4 text-blue-600" />
-    <span>
-      Joined {new Date(user.createdAt).toLocaleDateString()}
-    </span>
-  </div>
+                {/* Joined Date */}
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 1.1, duration: 0.4 }}
+                  whileHover={{ scale: 1.05, x: 5 }}
+                  className="flex items-center gap-2"
+                >
+                  <motion.div
+                    animate={{ rotate: [0, 5, -5, 0] }}
+                    transition={{ duration: 3, repeat: Infinity }}
+                  >
+                    <Calendar className="w-4 h-4 text-blue-600" />
+                  </motion.div>
+                  <span>
+                    Joined {new Date(user.createdAt).toLocaleDateString()}
+                  </span>
+                </motion.div>
 
-  {/* Links (GitHub etc.) */}
-  {user.links?.map((link: any, i: number) => (
-    <a
-      key={i}
-      href={link.url}
-      target="_blank"
-      rel="noreferrer"
-      className="flex items-center gap-2 text-indigo-600 hover:underline"
-    >
-      <Link2 className="w-4 h-4" />
-      <span>{link.label}</span>
-    </a>
-  ))}
-</div>
-
+                {/* Links (GitHub etc.) */}
+                {user.links?.map((link: any, i: number) => (
+                  <motion.a
+                    key={i}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 1.2 + i * 0.1, duration: 0.4 }}
+                    whileHover={{ scale: 1.1, x: 5 }}
+                    whileTap={{ scale: 0.95 }}
+                    href={link.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-2 text-indigo-600 hover:underline"
+                  >
+                    <motion.div
+                      animate={{ rotate: [0, 360] }}
+                      transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                    >
+                      <Link2 className="w-4 h-4" />
+                    </motion.div>
+                    <span>{link.label}</span>
+                  </motion.a>
+                ))}
+              </motion.div>
 
               {/* Stats */}
-              <div className="flex items-center gap-6 pb-3 border-b border-gray-200">
-                <StatItem value={userPosts.length} label="Posts" />
-                <StatItem value={user.followers.length} label="Followers" />
-                <StatItem value={user.following.length} label="Following" />
-              </div>
-
-              {/* Tabs */}
-              <div className="flex gap-8 pt-2 pb-1">
-                {tabs.map((tab) => {
-                  const Icon = tab.icon;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`flex items-center gap-2 px-1 py-3 font-semibold text-sm relative ${
-                        activeTab === tab.id
-                          ? "text-purple-600"
-                          : "text-gray-600 hover:text-gray-900"
-                      }`}
-                    >
-                      <Icon className="w-4 h-4" />
-                      {tab.label}
-                      {activeTab === tab.id && (
-                        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.3, duration: 0.5 }}
+                className="flex items-center gap-6 pb-3 border-b border-gray-200"
+              >
+                <StatItem value={userPosts.length} label="Posts" delay={1.4} />
+                <StatItem value={user.followers.length} label="Followers" delay={1.5} />
+                <StatItem value={user.following.length} label="Following" delay={1.6} />
+              </motion.div>
             </div>
           </div>
         </div>
-
-        {/* CONTENT */}
-        <div className="px-4 md:px-6 py-6">{getTabContent()}</div>
-      </div>
+        {/* POSTS */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.7, duration: 0.6 }}
+          className="px-4 md:px-6 py-6"
+        >
+          {loadingPosts ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5 }}
+              className="text-center text-gray-500 py-10"
+            >
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                className="inline-block"
+              >
+                Loading posts...
+              </motion.div>
+            </motion.div>
+          ) : userPosts.length === 0 ? (
+            <EmptyState text="No posts yet" icon={FileText} />
+          ) : (
+            <div className="space-y-5 max-w-8xl mx-auto w-full">
+              <AnimatePresence mode="popLayout">
+                {userPosts.map((post, index) => (
+                  <motion.div
+                    key={post._id}
+                    initial={{ opacity: 0, y: 50, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{
+                      delay: index * 0.1,
+                      duration: 0.5,
+                      type: "spring",
+                      stiffness: 100,
+                    }}
+                    whileHover={{ scale: 1.02 }}
+                  >
+                    <PostCard post={post} />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
+        </motion.div>
+      </motion.div>
 
       <EditProfileModal
         isOpen={isEditModalOpen}
@@ -262,26 +362,79 @@ export function ProfilePage() {
 
 /* ---------- Components ---------- */
 
-function StatItem({ value, label }: { value: number; label: string }) {
+function StatItem({
+  value,
+  label,
+  delay,
+}: {
+  value: number;
+  label: string;
+  delay?: number;
+}) {
   return (
-    <button className="group">
-      <span className="font-bold text-base text-gray-900 group-hover:text-purple-600 transition-colors">
+    <motion.button
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: delay || 0, duration: 0.5 }}
+      whileHover={{
+        scale: 1.1,
+        y: -5,
+      }}
+      whileTap={{ scale: 0.95 }}
+      className="group"
+    >
+      <motion.span
+        whileHover={{ scale: 1.2 }}
+        transition={{ type: "spring", stiffness: 300 }}
+        className="font-bold text-base text-gray-900 group-hover:text-purple-600 transition-colors"
+      >
         {value.toLocaleString()}
-      </span>
+      </motion.span>
       <span className="text-gray-600 text-sm ml-1">{label}</span>
-    </button>
+    </motion.button>
   );
 }
 
 function EmptyState({ text, icon: Icon }: { text: string; icon: any }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+    <motion.div
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.6, type: "spring" }}
+      className="bg-white rounded-xl border border-gray-200 p-12 text-center"
+    >
       <div className="flex flex-col items-center gap-3">
-        <div className="p-4 bg-gray-50 rounded-full">
-          <Icon className="w-8 h-8 text-gray-400" />
-        </div>
-        <p className="text-base text-gray-500 font-medium">{text}</p>
+        <motion.div
+          initial={{ rotate: -180, scale: 0 }}
+          animate={{ rotate: 0, scale: 1 }}
+          transition={{
+            type: "spring",
+            stiffness: 200,
+            damping: 15,
+            delay: 0.2,
+          }}
+          whileHover={{
+            rotate: [0, -10, 10, -10, 0],
+            scale: 1.1,
+          }}
+          className="p-4 bg-gray-50 rounded-full"
+        >
+          <motion.div
+            animate={{ y: [0, -5, 0] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            <Icon className="w-8 h-8 text-gray-400" />
+          </motion.div>
+        </motion.div>
+        <motion.p
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4, duration: 0.5 }}
+          className="text-base text-gray-500 font-medium"
+        >
+          {text}
+        </motion.p>
       </div>
-    </div>
+    </motion.div>
   );
 }
