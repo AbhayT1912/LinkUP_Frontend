@@ -7,6 +7,7 @@ import { DiscoverPage } from "./pages/DiscoverPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { Layout } from "./components/Layout";
 import { RegisterPage } from "./pages/Register";
+import {PublicProfilePage} from "./pages/PublicProfilePage";
 
 /* =========================
    HELPERS
@@ -29,6 +30,15 @@ function Root() {
     </Layout>
   );
 }
+
+function PublicProfile() {
+  return (
+    <Layout>
+      {() => <PublicProfilePage />}
+    </Layout>
+  );
+}
+
 
 function Messages() {
   return (
@@ -100,5 +110,9 @@ export const router = createBrowserRouter([
   {
     path: "/profile",
     element: isAuthenticated() ? <Profile /> : <Navigate to="/auth" replace />,
+  },
+  {
+    path: "/profile/:username",
+    element: isAuthenticated() ? <PublicProfile /> : <Navigate to="/auth" replace />,
   },
 ]);

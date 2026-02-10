@@ -40,24 +40,18 @@ export function UserCard({
      HANDLE VIEW PROFILE - Using getUserByUsername API
      ========================= */
   const handleViewProfile = async () => {
-    try {
-      setIsLoadingProfile(true);
+  try {
+    setIsLoadingProfile(true);
 
-      // Fetch user data using the API
-      const response = await getUserByUsername(user.username);
-      const userData = response.data.user || response.data;
-
-      // Navigate to public profile with fetched user data
-      navigate("/public-profile", {
-        state: { user: userData },
-      });
-    } catch (err) {
-      console.error("Error loading profile:", err);
-      alert("Failed to load profile. Please try again.");
-    } finally {
-      setIsLoadingProfile(false);
-    }
-  };
+    // Navigate directly with username in URL
+    navigate(`/profile/${user.username}`);
+  } catch (err) {
+    console.error("Error navigating to profile:", err);
+    alert("Failed to load profile. Please try again.");
+  } finally {
+    setIsLoadingProfile(false);
+  }
+};
 
   /* =========================
      HANDLE MESSAGE BUTTON CLICK
