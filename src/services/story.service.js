@@ -2,7 +2,7 @@
 import axios from "axios";
 
 // CRITICAL: Make sure this matches your backend URL
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const API_URL = import.meta.env.VITE_API_URL;
 
 console.log("API_URL configured as:", API_URL);
 
