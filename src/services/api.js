@@ -8,7 +8,7 @@ if (!RAW_BASE_URL) {
 }
 
 // Normalize URL and append `/api`
-const API_BASE_URL = `${RAW_BASE_URL.replace(/\/$/, "")}/api`;
+const API_BASE_URL = RAW_BASE_URL.replace(/\/$/, "");
 
 const api = axios.create({
   baseURL: API_BASE_URL,
