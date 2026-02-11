@@ -38,7 +38,7 @@ export const addStory = async (formData) => {
     const token = localStorage.getItem("token");
 
     const response = await axios.post(
-      `${API_URL}/api/stories`,
+      `${API_URL}/stories`,
       formData,
       {
         headers: {
@@ -62,9 +62,9 @@ export const addStory = async (formData) => {
    ========================= */
 export const getFeedStories = async () => {
   try {
-    console.log("Fetching stories from:", `${API_URL}/api/stories/feed`);
+    console.log("Fetching stories from:", `${API_URL}/stories/feed`);
 
-    const response = await api.get("/api/stories/feed");
+    const response = await api.get("/stories/feed");
 
     console.log("Stories response:", response.data);
 
@@ -96,7 +96,7 @@ export const getFeedStories = async () => {
    ========================= */
 export const viewStory = async (storyId) => {
   try {
-    const response = await api.post(`/api/stories/${storyId}/view`);
+    const response = await api.post(`/stories/${storyId}/view`);
     return response.data;
   } catch (error) {
     console.error("Error viewing story:", error);
